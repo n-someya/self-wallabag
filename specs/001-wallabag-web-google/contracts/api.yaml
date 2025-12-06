@@ -1,0 +1,470 @@
+openapi: 3.0.0
+info:
+  title: Wallabag API with API Key Authentication
+  version: '1.0.0'
+  description: API for Wallabag self-hosted service on Google Cloud Run
+servers:
+  - url: https://wallabag.example.com/api
+    description: Production server (replace with actual Cloud Run URL)
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key for authentication
+    OAuth2:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /oauth/v2/token
+          scopes:
+            read: Read access to content
+            write: Write access to content
+  schemas:
+    Article:
+      type: object
+      required:
+        - url
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Unique identifier for the article
+        url:
+          type: string
+          format: uri
+          description: Original URL of the article
+        title:
+          type: string
+          description: Title of the article
+        content:
+          type: string
+          description: HTML content of the article
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When the article was created
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When the article was last updated
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the article was marked as read
+        reading_time:
+          type: integer
+          description: Estimated reading time in minutes
+        domain_name:
+          type: string
+          readOnly: true
+          description: Domain name from the URL
+        is_archived:
+          type: boolean
+          default: false
+          description: Whether the article is archived
+        is_starred:
+          type: boolean
+          default: false
+          description: Whether the article is starred
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          description: Tags associated with the article
+    Tag:
+      type: object
+      required:
+        - label
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Unique identifier for the tag
+        label:
+          type: string
+          description: Display name of the tag
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When the tag was created
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP status code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Additional error details
+security:
+  - ApiKeyAuth: []
+  - OAuth2: [read, write]
+paths:
+  /entries:
+    get:
+      summary: Get all articles
+      description: Retrieve all articles with optional filtering
+      operationId: getEntries
+      parameters:
+        - name: archive
+          in: query
+          description: Filter by archived status
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+        - name: starred
+          in: query
+          description: Filter by starred status
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [created, updated, archived]
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: perPage
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: tags
+          in: query
+          description: Filter by tags (comma separated)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of articles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  pages:
+                    type: integer
+                  total:
+                    type: integer
+                  _embedded:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Article'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a new article
+      description: Save a new article from URL
+      operationId: createEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL to save
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Tags to apply to the article
+                title:
+                  type: string
+                  description: Optional title override
+                starred:
+                  type: boolean
+                  default: false
+                  description: Whether to star the article
+                archive:
+                  type: boolean
+                  default: false
+                  description: Whether to archive the article
+      responses:
+        '201':
+          description: Article created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /entries/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Article ID
+    get:
+      summary: Get article by ID
+      description: Retrieve a specific article by its ID
+      operationId: getEntry
+      responses:
+        '200':
+          description: Article found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '404':
+          description: Article not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update article
+      description: Update article properties like read status, archived, starred
+      operationId: updateEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: New title for the article
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Updated tags
+                starred:
+                  type: boolean
+                  description: Whether to star the article
+                archive:
+                  type: boolean
+                  description: Whether to archive the article
+      responses:
+        '200':
+          description: Article updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Article not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete article
+      description: Delete an article by its ID
+      operationId: deleteEntry
+      responses:
+        '204':
+          description: Article deleted successfully
+        '404':
+          description: Article not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api-keys:
+    get:
+      summary: List API keys
+      description: List all API keys for the current user
+      operationId: getApiKeys
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    expires_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    last_used_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    is_active:
+                      type: boolean
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create new API key
+      description: Generate a new API key
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Descriptive name for the key
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Optional expiration date
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  key:
+                    type: string
+                    description: The API key (only shown once)
+                  name:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  is_active:
+                    type: boolean
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api-keys/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: API key ID
+    delete:
+      summary: Revoke API key
+      description: Revoke an API key by its ID
+      operationId: revokeApiKey
+      responses:
+        '204':
+          description: API key revoked successfully
+        '404':
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

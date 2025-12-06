@@ -1,0 +1,129 @@
+openapi: 3.0.0
+info:
+  title: Wallabag API Authentication
+  description: API authentication endpoints for Wallabag self-hosted service
+  version: 1.0.0
+
+servers:
+  - url: https://wallabag.example.com/api
+    description: Self-hosted Wallabag API
+
+paths:
+  /oauth/v2/token:
+    post:
+      summary: Obtain API token
+      description: Obtains an OAuth2 token for authenticating with the Wallabag API
+      operationId: getToken
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - grant_type
+                - client_id
+                - client_secret
+                - username
+                - password
+              properties:
+                grant_type:
+                  type: string
+                  enum: [password]
+                  description: OAuth2 grant type
+                client_id:
+                  type: string
+                  description: Client ID from Wallabag
+                client_secret:
+                  type: string
+                  description: Client secret from Wallabag
+                username:
+                  type: string
+                  description: Wallabag username
+                password:
+                  type: string
+                  description: Wallabag password
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: OAuth token for API access
+                  expires_in:
+                    type: integer
+                    description: Token expiration time in seconds
+                  token_type:
+                    type: string
+                    description: Token type (e.g., "Bearer")
+                  refresh_token:
+                    type: string
+                    description: Token used to refresh access without re-authentication
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error type
+                  error_description:
+                    type: string
+                    description: Detailed error description
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error type
+                  error_description:
+                    type: string
+                    description: Authentication error details
+
+  /oauth/v2/token/revoke:
+    post:
+      summary: Revoke API token
+      description: Revokes a previously issued OAuth2 token
+      operationId: revokeToken
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: The token to revoke
+      responses:
+        '200':
+          description: Token successfully revoked
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized - invalid or expired token
+          
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
