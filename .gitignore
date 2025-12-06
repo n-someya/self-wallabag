@@ -1,0 +1,65 @@
+# Environment configuration
+.env
+.env.*
+!.env.example
+
+# Docker build artifacts
+backend/src/docker/build_temp/
+
+# Local database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets and credentials
+**/initial-admin-password.txt
+**/api-key.txt
+**/keys/
+**/secret_keys/
+*-key.json
+
+# Terraform state files and sensitive files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+**/terraform.tfvars
+!**/terraform.tfvars.example
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+.tmp/
+tmp/
+*.tmp
+*.bak
+*.swp
+
+# Dependency directories
+node_modules/
+vendor/
+
+# Cache directories
+.cache/
+var/cache/
+var/logs/
+
+# IDE files
+.idea/
+.vscode/
+*.code-workspace
+.DS_Store
+
+# Compiled files
+*.class
+*.o
+*.pyc
+*.pyo
+
+# Local Wallabag data
+/data/
+/wallabag-data/
+/wallabag-images/
+/wallabag-source/
