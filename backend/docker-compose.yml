@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  wallabag:
+    build:
+      context: .
+      dockerfile: ./src/docker/dev.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    environment:
+      - WALLABAG_DATABASE_DRIVER=pdo_pgsql
+      - WALLABAG_DATABASE_HOST=postgres
+      - WALLABAG_DATABASE_PORT=5432
+      - WALLABAG_DATABASE_NAME=wallabag
+      - WALLABAG_DATABASE_USER=wallabag
+      - WALLABAG_DATABASE_PASSWORD=wallabag
+      - WALLABAG_SECRET=wallabag_dev_secret
+      - WALLABAG_DOMAIN=localhost:8080
+      - SYMFONY_ENV=dev
+    volumes:
+      - ./src/config:/var/www/html/app/config:ro
+      - wallabag_data:/var/www/html/data
+      - wallabag_images:/var/www/html/web/assets/images
+
+  postgres:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=wallabag
+      - POSTGRES_PASSWORD=wallabag
+      - POSTGRES_DB=wallabag
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # Mock Supabase service for testing
+  supabase-mock:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    command: -c "shared_preload_libraries=pg_stat_statements"
+    volumes:
+      - supabase_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  # Test runner service for API tests
+  test-runner:
+    build:
+      context: .
+      dockerfile: ./src/docker/test.Dockerfile
+    volumes:
+      - ./tests:/app/tests
+      - ./src:/app/src
+    depends_on:
+      - wallabag
+      - postgres
+    environment:
+      - TEST_WALLABAG_URL=http://wallabag:80
+      - TEST_DATABASE_HOST=postgres
+      - TEST_DATABASE_PORT=5432
+      - TEST_DATABASE_NAME=wallabag_test
+      - TEST_DATABASE_USER=wallabag
+      - TEST_DATABASE_PASSWORD=wallabag
+
+volumes:
+  postgres_data:
+  supabase_data:
+  wallabag_data:
+  wallabag_images:

@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=wallabag
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - internal_network
+
+  wallabag:
+    image: wallabag/wallabag:latest
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST=db
+      - SYMFONY__ENV__DATABASE_DRIVER=pdo_pgsql
+      - SYMFONY__ENV__DATABASE_HOST=db
+      - SYMFONY__ENV__DATABASE_PORT=5432
+      - SYMFONY__ENV__DATABASE_NAME=wallabag
+      - SYMFONY__ENV__DATABASE_USER=postgres
+      - SYMFONY__ENV__DATABASE_PASSWORD=postgres
+      - SYMFONY__ENV__SECRET=mysecretstring
+      - SYMFONY__ENV__DOMAIN_NAME=http://localhost:8080
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_GOOGLE__ENABLED=true
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_EMAIL__ENABLED=true
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_TRUSTED_DEVICE__ENABLED=true
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_BACKUP_CODES__ENABLED=true
+    ports:
+      - "8080:80"
+    volumes:
+      - wallabag_images:/var/www/wallabag/web/assets/images
+      - wallabag_data:/var/www/wallabag/data
+    networks:
+      - internal_network
+    depends_on:
+      - db
+
+volumes:
+  postgres:
+  wallabag_images:
+  wallabag_data:
+
+networks:
+  internal_network:
+    driver: bridge
