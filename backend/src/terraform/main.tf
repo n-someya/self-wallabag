@@ -99,11 +99,7 @@ locals {
     SYMFONY__ENV__LOG_LEVEL               = var.log_level
     SYMFONY_ENV                           = "prod"
     SYMFONY_DEBUG                         = "0"
-    SYMFONY__ENV__MAILER_TRANSPORT        = "smtp"
-    SYMFONY__ENV__MAILER_USER             = "~"
-    SYMFONY__ENV__MAILER_PASSWORD         = "~"
     SYMFONY__ENV__DOMAIN_NAME             = var.enable_custom_domain ? "https://${var.domain_name}" : "https://wallabag-gobijnh4fa-uc.a.run.app"
-    SYMFONY__ENV__FOSUSER_REGISTRATION_CONFIRMATION_ENABLED = "false"
     GCP_PROJECT_ID                        = var.project_id
     GCP_REGION                            = var.region
   })

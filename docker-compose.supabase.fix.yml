@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  wallabag:
+    image: us-central1-docker.pkg.dev/plucky-vault-184315/wallabag/wallabag@sha256:6a4ad438a6e526ed051d9b359bcd97e477bb3b65eccbf631c94462d0a45ebff8
+    environment:
+      # Supabase PostgreSQL connection
+      - POSTGRES_HOST=${SUPABASE_HOST}
+      - POSTGRES_PORT=${SUPABASE_PORT}
+      - POSTGRES_USER=${SUPABASE_DB_USER}
+      - POSTGRES_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - PGDATABASE=postgres
+      # Enable auto-population with dedicated database
+      - POPULATE_DATABASE=True
+
+      # Symfony database configuration
+      - SYMFONY__ENV__DATABASE_DRIVER=pdo_pgsql
+      - SYMFONY__ENV__DATABASE_HOST=${SUPABASE_HOST}
+      - SYMFONY__ENV__DATABASE_PORT=${SUPABASE_PORT}
+      - SYMFONY__ENV__DATABASE_NAME=${SUPABASE_DB_NAME}
+      - SYMFONY__ENV__DATABASE_USER=${SUPABASE_DB_USER}
+      - SYMFONY__ENV__DATABASE_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - SYMFONY__ENV__DATABASE_CHARSET=utf8
+      - SYMFONY__ENV__DATABASE_DRIVER_OPTIONS={"sslmode":"require"}
+
+      # Application settings
+      #- SYMFONY__ENV__SECRET=${WALLABAG_SECRET:-mysecretstring_change_this_in_production}
+      - SYMFONY__ENV__SECRET='2WKq#nIK8qFUNL{?wG6XC]Kug7tFXtb{'
+      - SYMFONY__ENV__DOMAIN_NAME=${LOCAL_DOMAIN:-http://localhost:8080}
+      - SYMFONY_ENV=prod
+      - SYMFONY_DEBUG=0
+
+      # Security and 2FA settings
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_GOOGLE__ENABLED=true
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_EMAIL__ENABLED=true
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_TRUSTED_DEVICE__ENABLED=true
+      - SYMFONY__ENV__SCHEB_TWO_FACTOR_BACKUP_CODES__ENABLED=true
+
+      # OAuth token settings
+      - SYMFONY__ENV__FOS_OAUTH_SERVER_ACCESS_TOKEN_LIFETIME=3600
+      - SYMFONY__ENV__FOS_OAUTH_SERVER_REFRESH_TOKEN_LIFETIME=1209600
+
+    ports:
+      - "${LOCAL_PORT:-8080}:80"
+    volumes:
+      - wallabag_images:/var/www/wallabag/web/assets/images
+      - wallabag_data:/var/www/wallabag/data
+
+volumes:
+  wallabag_images:
+  wallabag_data:
